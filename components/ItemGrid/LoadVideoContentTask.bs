@@ -429,6 +429,13 @@ end sub
 function isHTTPStream() as boolean
     if not m.playbackInfo.MediaSources[0].LookupCI("isremote") then return false
     if not isStringEqual(m.playbackInfo.MediaSources[0].LookupCI("VideoType"), "VideoFile") then return false
+
+    ' Do not bypass the server when the user forces transcoding or the server says this device cannot
+    ' play the remote file but offers a transcode (e.g. HEVC on a device that cannot decode it).
+    if not isStringEqual(PlaybackMethod.PLAYNORMALLY, chainLookupReturn(m.global.session, "user.settings.`playback.media.forceTranscode`", PlaybackMethod.PLAYNORMALLY)) then return false
+    if not isStringEqual(PlaybackMethod.PLAYNORMALLY, m.global.queueManager.callFunc("getForceTranscode")) then return false
+    if m.playbackInfo.MediaSources[0].SupportsDirectPlay = false and isValidAndNotEmpty(m.playbackInfo.MediaSources[0].TranscodingUrl) then return false
+
     return true
 end function
 
