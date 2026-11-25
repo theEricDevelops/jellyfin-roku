@@ -310,6 +310,15 @@ sub LoadItems_AddVideoContent(video as object, mediaSourceId as dynamic, audio_s
     ' Use either the user's selected subtitles, or the default track
     if m.top.selectedSubtitleIndex = SubtitleSelection.NOTSET
         video.SelectedSubtitle = m.playbackInfo.MediaSources[0].LookupCI("DefaultSubtitleStreamIndex")
+
+        ' The user's last caption choice on this device wins over the server's default
+        rememberedChoice = m.global.session.user.settings["playback.subs.lastchoice"]
+        if isStringEqual(rememberedChoice, "none")
+            video.SelectedSubtitle = SubtitleSelection.NONE
+        else if isValidAndNotEmpty(rememberedChoice)
+            rememberedIndex = findSubtitleIndexForLanguage(m.playbackInfo.MediaSources[0].MediaStreams, rememberedChoice)
+            if isValid(rememberedIndex) then video.SelectedSubtitle = rememberedIndex
+        end if
     else
         video.SelectedSubtitle = m.top.selectedSubtitleIndex
     end if
@@ -637,6 +646,27 @@ sub addEpisodeToShowAtFinish(showID)
         m.global.queueManager.callFunc("setEpisodeToShowAtFinish", data.Items[1])
     end if
 end sub
+
+' Finds the first non-forced text subtitle in the given language
+'
+' @param {object} streams - MediaStreams of the chosen media source
+' @param {string} language - three letter language code, e.g. "eng"
+' @return {dynamic} stream index, or invalid if there is no matching subtitle
+function findSubtitleIndexForLanguage(streams as object, language as string) as dynamic
+    if not isValidAndNotEmpty(streams) then return invalid
+
+    for each stream in streams
+        if not isStringEqual(stream.LookupCI("Type"), "Subtitle") then continue for
+        if stream.LookupCI("IsForced") = true then continue for
+        if stream.LookupCI("IsTextSubtitleStream") <> true then continue for
+
+        if LCase(stream.LookupCI("Language") ?? string.EMPTY) = LCase(language)
+            return stream.LookupCI("Index")
+        end if
+    end for
+
+    return invalid
+end function
 
 'Checks available subtitle tracks and puts subtitles in forced, default, and non-default/forced but preferred language at the top
 function sortSubtitles(MediaStreams)

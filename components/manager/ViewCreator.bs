@@ -7,6 +7,7 @@ import "pkg:/source/enums/TimerControl.bs"
 import "pkg:/source/enums/TransportCommand.bs"
 import "pkg:/source/enums/TransportStatus.bs"
 import "pkg:/source/enums/VideoControl.bs"
+import "pkg:/source/utils/config.bs"
 
 const STILL_WATCHING_POPUP_TIMER_SECONDS = 60
 
@@ -321,6 +322,7 @@ sub processSubtitleSelection()
         end if
 
         m.global.queueManager.callFunc("setPreferredSubtitleTrack", m.selectedSubtitle)
+        rememberSubtitleChoice()
         return
     end if
 
@@ -339,7 +341,21 @@ sub processSubtitleSelection()
     end if
 
     m.global.queueManager.callFunc("setPreferredSubtitleTrack", m.selectedSubtitle)
+    rememberSubtitleChoice()
     m.view.selectedSubtitle = m.selectedSubtitle.Index
+end sub
+
+' rememberSubtitleChoice: Saves the subtitle language (or "none") the user picked, so later videos start with the same choice
+sub rememberSubtitleChoice()
+    if LCase(m.selectedSubtitle.track.description) = "none"
+        set_user_setting("playback.subs.lastchoice", "none")
+        return
+    end if
+
+    language = chainLookupReturn(m.selectedSubtitle, "track.language", string.EMPTY)
+    if language <> string.EMPTY
+        set_user_setting("playback.subs.lastchoice", LCase(language))
+    end if
 end sub
 
 ' User requested playback info
